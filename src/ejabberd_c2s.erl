@@ -1053,7 +1053,11 @@ wait_for_bind({xmlstreamelement, El}, StateData) ->
                                                       children =
                                                       [{xmlcdata,
                                                         jid:to_string(JID)}]}]}]},
-                                send_element(StateData3, jlib:iq_to_xml(Res)),
+				try
+				    send_element(StateData3, jlib:iq_to_xml(Res))
+				catch exit:normal ->
+					close(self())
+				end,
                                 fsm_next_state_pack(
                                   session_established,
                                   StateData3);
@@ -2886,7 +2890,7 @@ handle_unacked_stanzas(StateData)
 		    end;
 		false ->
 		    fun(From, To, El, _Time) ->
-			    Txt = <<"User session not found">>,
+			    Txt = <<"User session terminated">>,
 			    Err =
 				jlib:make_error_reply(
 				  El,
@@ -2898,7 +2902,7 @@ handle_unacked_stanzas(StateData)
 		?DEBUG("Dropping presence stanza from ~s",
 		       [jid:to_string(From)]);
 	   (From, To, #xmlel{name = <<"iq">>} = El, _Time) ->
-		Txt = <<"User session not found">>,
+		Txt = <<"User session terminated">>,
 		Err = jlib:make_error_reply(
 			El, ?ERRT_SERVICE_UNAVAILABLE(Lang, Txt)),
 		ejabberd_router:route(To, From, Err);
